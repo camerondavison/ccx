@@ -57,7 +57,13 @@ fn cmd_status() -> Result<()> {
     }
 
     for session in sessions {
-        println!("=== {} ===", session.name);
+        let title = tmux::get_pane_title(&session.name).unwrap_or_default();
+        let title_display = if title.is_empty() {
+            String::new()
+        } else {
+            format!(" [{}]", title)
+        };
+        println!("=== {}{} ===", session.name, title_display);
         println!(
             "  Attached: {}",
             if session.attached { "yes" } else { "no" }

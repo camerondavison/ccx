@@ -33,6 +33,11 @@ pub fn create_session(session_name: &str, prompt: &str) -> Result<()> {
         anyhow::bail!("Failed to create tmux session");
     }
 
+    // Enable title updates so Claude Code can set pane title with status icon
+    let _ = Command::new("tmux")
+        .args(["set-option", "-t", session_name, "allow-rename", "on"])
+        .status();
+
     Ok(())
 }
 
@@ -68,14 +73,30 @@ pub fn list_sessions() -> Result<Vec<Session>> {
     Ok(sessions)
 }
 
+/// Get the pane title for a session (contains Claude Code status icon)
+pub fn get_pane_title(session_name: &str) -> Result<String> {
+    let output = Command::new("tmux")
+        .args(["display-message", "-t", session_name, "-p", "#{pane_title}"])
+        .output()
+        .context("Failed to get pane title")?;
+
+    if !output.status.success() {
+        anyhow::bail!("Failed to get pane title for session {}", session_name);
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
 /// Capture recent content from a session's pane
 pub fn capture_pane(session_name: &str, lines: i32) -> Result<String> {
     let output = Command::new("tmux")
         .args([
             "capture-pane",
-            "-t", session_name,
+            "-t",
+            session_name,
             "-p",
-            "-S", &format!("-{}", lines),
+            "-S",
+            &format!("-{}", lines),
         ])
         .output()
         .context("Failed to capture pane")?;
