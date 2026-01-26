@@ -143,6 +143,18 @@ pub fn session_exists(session_name: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// Attach to an existing tmux session (replaces current process)
+pub fn attach_session(session_name: &str) -> Result<()> {
+    use std::os::unix::process::CommandExt;
+
+    let err = Command::new("tmux")
+        .args(["attach-session", "-t", session_name])
+        .exec();
+
+    // exec() only returns if it fails
+    Err(anyhow::anyhow!("Failed to exec tmux: {}", err))
+}
+
 #[derive(Debug)]
 pub struct Session {
     pub name: String,
