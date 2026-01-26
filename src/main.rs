@@ -18,8 +18,11 @@ enum Commands {
         /// The prompt to send to Claude
         prompt: String,
     },
-    /// Show status of all running sessions with content preview
-    Status,
+    /// Show status of sessions (list all, or detail for a specific session)
+    Status {
+        /// Optional session name to show detailed output
+        session: Option<String>,
+    },
     /// List all sessions
     List,
     /// Stop a specific session
@@ -34,7 +37,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Start { prompt } => cmd_start(&prompt),
-        Commands::Status => cmd_status(),
+        Commands::Status { session } => cmd_status(session.as_deref()),
         Commands::List => cmd_list(),
         Commands::Stop { session } => cmd_stop(&session),
     }
@@ -48,44 +51,45 @@ fn cmd_start(prompt: &str) -> Result<()> {
     Ok(())
 }
 
-fn cmd_status() -> Result<()> {
-    let sessions = tmux::list_sessions()?;
-
-    if sessions.is_empty() {
-        println!("No active ccx sessions");
-        return Ok(());
-    }
-
-    for session in sessions {
-        let title = tmux::get_pane_title(&session.name).unwrap_or_default();
-        let title_display = if title.is_empty() {
-            String::new()
-        } else {
-            format!(" [{}]", title)
-        };
-        println!("=== {}{} ===", session.name, title_display);
-        println!(
-            "  Attached: {}",
-            if session.attached { "yes" } else { "no" }
-        );
-
-        match tmux::capture_pane(&session.name, 10) {
-            Ok(content) => {
-                let preview: String = content
-                    .lines()
-                    .filter(|l| !l.trim().is_empty())
-                    .take(5)
-                    .map(|l| format!("  | {}", l))
-                    .collect::<Vec<_>>()
-                    .join("\n");
-                if !preview.is_empty() {
-                    println!("  Recent output:");
-                    println!("{}", preview);
-                }
+fn cmd_status(session: Option<&str>) -> Result<()> {
+    match session {
+        Some(name) => {
+            // Show detailed output for a specific session
+            if !tmux::session_exists(name) {
+                anyhow::bail!("Session '{}' does not exist", name);
             }
-            Err(e) => println!("  Could not capture output: {}", e),
+            match tmux::capture_pane(name, 10) {
+                Ok(content) => {
+                    // Take last 10 non-empty lines
+                    let lines: Vec<&str> =
+                        content.lines().filter(|l| !l.trim().is_empty()).collect();
+                    let last_10: Vec<&str> = lines.iter().rev().take(10).rev().cloned().collect();
+                    for line in last_10 {
+                        println!("{}", line);
+                    }
+                }
+                Err(e) => println!("Could not capture output: {}", e),
+            }
         }
-        println!();
+        None => {
+            // List all sessions with just name and title
+            let sessions = tmux::list_sessions()?;
+
+            if sessions.is_empty() {
+                println!("No active ccx sessions");
+                return Ok(());
+            }
+
+            for session in sessions {
+                let title = tmux::get_pane_title(&session.name).unwrap_or_default();
+                let title_display = if title.is_empty() {
+                    String::new()
+                } else {
+                    format!(" [{}]", title)
+                };
+                println!("{}{}", session.name, title_display);
+            }
+        }
     }
 
     Ok(())
