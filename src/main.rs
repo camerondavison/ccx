@@ -99,12 +99,17 @@ fn cmd_status(session: Option<&str>) -> Result<()> {
 
             for session in sessions {
                 let title = tmux::get_pane_title(&session.name).unwrap_or_default();
+                let status = tmux::parse_status_from_title(&title);
+                let status_display = match status {
+                    tmux::SessionStatus::Unknown => String::new(),
+                    _ => format!(" *{}*", status),
+                };
                 let title_display = if title.is_empty() {
                     String::new()
                 } else {
                     format!(" [{}]", title)
                 };
-                println!("{}{}", session.name, title_display);
+                println!("{}{}{}", session.name, status_display, title_display);
             }
         }
     }

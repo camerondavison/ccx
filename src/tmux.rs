@@ -160,3 +160,127 @@ pub struct Session {
     pub name: String,
     pub attached: bool,
 }
+
+/// Status of a Claude Code session based on the spinner character in the pane title
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SessionStatus {
+    /// Session is actively working (spinner characters like ⠐⠒⠔⠕⠖⠗⠘⠙⠚⠛)
+    InProgress,
+    /// Session has completed (✳ character)
+    Done,
+    /// Status could not be determined
+    Unknown,
+}
+
+impl std::fmt::Display for SessionStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SessionStatus::InProgress => write!(f, "in-progress"),
+            SessionStatus::Done => write!(f, "done"),
+            SessionStatus::Unknown => write!(f, "unknown"),
+        }
+    }
+}
+
+/// Check if a character is a braille pattern dot (Unicode range U+2800-U+28FF)
+/// These are used by Claude Code spinners to indicate in-progress status
+fn is_braille_spinner(c: char) -> bool {
+    let code = c as u32;
+    // Braille Patterns block: U+2800 to U+28FF
+    // Exclude U+2800 (blank braille pattern) as it's not a spinner
+    (0x2801..=0x28FF).contains(&code)
+}
+
+/// Done indicator character
+const DONE_CHAR: char = '✳';
+
+/// Parse the session status from a pane title
+pub fn parse_status_from_title(title: &str) -> SessionStatus {
+    let trimmed = title.trim();
+    if trimmed.is_empty() {
+        return SessionStatus::Unknown;
+    }
+
+    // Check the first character of the title
+    if let Some(first_char) = trimmed.chars().next() {
+        if first_char == DONE_CHAR {
+            return SessionStatus::Done;
+        }
+        if is_braille_spinner(first_char) {
+            return SessionStatus::InProgress;
+        }
+    }
+
+    SessionStatus::Unknown
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_braille_spinner() {
+        // All braille patterns except blank should be spinners
+        assert!(is_braille_spinner('⠐')); // U+2810
+        assert!(is_braille_spinner('⠋')); // U+280B
+        assert!(is_braille_spinner('⠂')); // U+2802
+        assert!(is_braille_spinner('⣿')); // U+28FF (max braille)
+        assert!(is_braille_spinner('⠁')); // U+2801 (min non-blank braille)
+
+        // Blank braille and non-braille should not be spinners
+        assert!(!is_braille_spinner('⠀')); // U+2800 (blank braille)
+        assert!(!is_braille_spinner('A'));
+        assert!(!is_braille_spinner('✳'));
+    }
+
+    #[test]
+    fn test_parse_status_done() {
+        assert_eq!(
+            parse_status_from_title("✳ Stack Issue 1"),
+            SessionStatus::Done
+        );
+        assert_eq!(parse_status_from_title("✳"), SessionStatus::Done);
+        assert_eq!(
+            parse_status_from_title("  ✳ with spaces"),
+            SessionStatus::Done
+        );
+    }
+
+    #[test]
+    fn test_parse_status_in_progress() {
+        assert_eq!(
+            parse_status_from_title("⠐ Stack Issue 1"),
+            SessionStatus::InProgress
+        );
+        assert_eq!(
+            parse_status_from_title("⠋ Spinning"),
+            SessionStatus::InProgress
+        );
+        assert_eq!(
+            parse_status_from_title("⠹ Another spinner"),
+            SessionStatus::InProgress
+        );
+        // Test the character that was missing
+        assert_eq!(
+            parse_status_from_title("⠂ Status Indicators"),
+            SessionStatus::InProgress
+        );
+    }
+
+    #[test]
+    fn test_parse_status_unknown() {
+        assert_eq!(parse_status_from_title(""), SessionStatus::Unknown);
+        assert_eq!(parse_status_from_title("   "), SessionStatus::Unknown);
+        assert_eq!(
+            parse_status_from_title("No spinner here"),
+            SessionStatus::Unknown
+        );
+    }
+
+    #[test]
+    fn test_session_status_display() {
+        assert_eq!(format!("{}", SessionStatus::InProgress), "in-progress");
+        assert_eq!(format!("{}", SessionStatus::Done), "done");
+        assert_eq!(format!("{}", SessionStatus::Unknown), "unknown");
+    }
+}
