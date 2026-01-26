@@ -33,6 +33,11 @@ enum Commands {
         /// The session name to stop
         session: String,
     },
+    /// Attach to an existing session
+    Attach {
+        /// The session name to attach to
+        session: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -43,6 +48,7 @@ fn main() -> Result<()> {
         Commands::Status { session } => cmd_status(session.as_deref()),
         Commands::List => cmd_list(),
         Commands::Stop { session } => cmd_stop(&session),
+        Commands::Attach { session } => cmd_attach(&session),
     }
 }
 
@@ -127,4 +133,12 @@ fn cmd_stop(session: &str) -> Result<()> {
     tmux::kill_session(session)?;
     println!("Stopped session: {}", session);
     Ok(())
+}
+
+fn cmd_attach(session: &str) -> Result<()> {
+    if !tmux::session_exists(session) {
+        anyhow::bail!("Session '{}' does not exist", session);
+    }
+
+    tmux::attach_session(session)
 }
