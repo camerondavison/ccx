@@ -21,11 +21,23 @@ fn rand_id() -> u32 {
 }
 
 /// Create a new detached tmux session running claude with the given prompt
-pub fn create_session(session_name: &str, prompt: &str) -> Result<()> {
-    let claude_cmd = format!("claude \"{}\"", prompt.replace('"', "\\\""));
+pub fn create_session(session_name: &str, prompt: &str, cwd: Option<&str>) -> Result<()> {
+    let claude_cmd = format!(
+        "claude --dangerously-skip-permissions \"{}\"",
+        prompt.replace('"', "\\\"")
+    );
+
+    let mut args = vec!["new-session", "-d", "-s", session_name];
+
+    if let Some(dir) = cwd {
+        args.push("-c");
+        args.push(dir);
+    }
+
+    args.push(&claude_cmd);
 
     let status = Command::new("tmux")
-        .args(["new-session", "-d", "-s", session_name, &claude_cmd])
+        .args(&args)
         .status()
         .context("Failed to execute tmux")?;
 

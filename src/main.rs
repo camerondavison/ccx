@@ -17,6 +17,9 @@ enum Commands {
     Start {
         /// The prompt to send to Claude
         prompt: String,
+        /// Working directory for the Claude Code session
+        #[arg(long)]
+        cwd: Option<String>,
     },
     /// Show status of sessions (list all, or detail for a specific session)
     Status {
@@ -36,16 +39,16 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Start { prompt } => cmd_start(&prompt),
+        Commands::Start { prompt, cwd } => cmd_start(&prompt, cwd.as_deref()),
         Commands::Status { session } => cmd_status(session.as_deref()),
         Commands::List => cmd_list(),
         Commands::Stop { session } => cmd_stop(&session),
     }
 }
 
-fn cmd_start(prompt: &str) -> Result<()> {
+fn cmd_start(prompt: &str, cwd: Option<&str>) -> Result<()> {
     let session_name = tmux::generate_session_name();
-    tmux::create_session(&session_name, prompt)?;
+    tmux::create_session(&session_name, prompt, cwd)?;
     println!("Started session: {}", session_name);
     println!("Attach with: tmux attach -t {}", session_name);
     Ok(())
