@@ -1,0 +1,18 @@
+{
+  "name": "ccx",
+  "metadata": {
+    "description": "Claude Code session manager with tmux integration"
+  },
+  "owner": {
+    "name": "cameron"
+  },
+  "plugins": [
+    {
+      "name": "worktree-itack",
+      "description": "Automate working on itack issues using git worktrees",
+      "source": "./plugins",
+      "version": "0.1.0",
+      "skills": ["./worktree-itack"]
+    }
+  ]
+}
