@@ -1,25 +1,18 @@
 {
   "name": "ccx",
   "metadata": {
-    "description": "Claude Code session manager with tmux integration"
+    "description": "ccx (Claude Code eXecutor) skills"
   },
   "owner": {
-    "name": "cameron"
+    "name": "Cameron Davison",
+    "email": "cameron.davison+ccx@gmail.com"
   },
   "plugins": [
     {
       "name": "ccx",
-      "description": "Manage Claude Code sessions in tmux",
+      "description": "Plugins for ccx (Claude Code eXecutor)",
       "source": "./plugins",
-      "version": "0.1.0",
-      "skills": ["./ccx"]
-    },
-    {
-      "name": "worktree-itack",
-      "description": "Automate working on itack issues using git worktrees",
-      "source": "./plugins",
-      "version": "0.1.0",
-      "skills": ["./worktree-itack"]
+      "version": "0.1.0"
     }
   ]
 }
