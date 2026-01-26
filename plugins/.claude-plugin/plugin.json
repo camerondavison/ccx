@@ -1,0 +1,8 @@
+{
+  "name": "ccx",
+  "description": "Plugins for ccx (Claude Code eXecutor)",
+  "author": {
+    "name": "Cameron Davison",
+    "email": "cameron.davison+ccx@gmail.com"
+  }
+}
