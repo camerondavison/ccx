@@ -1,7 +1,8 @@
 mod tmux;
 
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::{generate, Shell};
 
 #[derive(Parser)]
 #[command(name = "ccx")]
@@ -38,6 +39,12 @@ enum Commands {
         /// The session name to attach to
         session: String,
     },
+    /// Generate shell completions
+    Completions {
+        /// The shell to generate completions for
+        #[arg(value_enum, default_value = "bash")]
+        shell: Shell,
+    },
 }
 
 fn main() -> Result<()> {
@@ -49,6 +56,7 @@ fn main() -> Result<()> {
         Commands::List => cmd_list(),
         Commands::Stop { session } => cmd_stop(&session),
         Commands::Attach { session } => cmd_attach(&session),
+        Commands::Completions { shell } => cmd_completions(shell),
     }
 }
 
@@ -141,4 +149,10 @@ fn cmd_attach(session: &str) -> Result<()> {
     }
 
     tmux::attach_session(session)
+}
+
+fn cmd_completions(shell: Shell) -> Result<()> {
+    let mut cmd = Cli::command();
+    generate(shell, &mut cmd, "ccx", &mut std::io::stdout());
+    Ok(())
 }
