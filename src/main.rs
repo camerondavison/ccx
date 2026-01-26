@@ -4,7 +4,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "maestro")]
+#[command(name = "ccx")]
 #[command(about = "Manage Claude Code sessions in tmux")]
 struct Cli {
     #[command(subcommand)]
