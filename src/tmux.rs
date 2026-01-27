@@ -99,6 +99,26 @@ pub fn get_pane_title(session_name: &str) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
+/// Get the current working directory for a session's pane
+pub fn get_pane_cwd(session_name: &str) -> Result<String> {
+    let output = Command::new("tmux")
+        .args([
+            "display-message",
+            "-t",
+            session_name,
+            "-p",
+            "#{pane_current_path}",
+        ])
+        .output()
+        .context("Failed to get pane cwd")?;
+
+    if !output.status.success() {
+        anyhow::bail!("Failed to get pane cwd for session {}", session_name);
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
 /// Capture recent content from a session's pane
 pub fn capture_pane(session_name: &str, lines: i32) -> Result<String> {
     let output = Command::new("tmux")

@@ -3,6 +3,7 @@ mod tmux;
 use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{generate, Shell};
+use std::env;
 
 #[derive(Parser)]
 #[command(name = "ccx")]
@@ -68,6 +69,17 @@ fn main() -> Result<()> {
     }
 }
 
+/// Shorten a path for display by replacing $HOME with ~
+fn shorten_path(path: &str) -> String {
+    if let Some(home) = env::var_os("HOME") {
+        let home_str = home.to_string_lossy();
+        if path.starts_with(home_str.as_ref()) {
+            return format!("~{}", &path[home_str.len()..]);
+        }
+    }
+    path.to_string()
+}
+
 fn cmd_start(prompt: &str, cwd: Option<&str>) -> Result<()> {
     let session_name = tmux::generate_session_name();
     tmux::create_session(&session_name, prompt, cwd)?;
@@ -117,7 +129,13 @@ fn cmd_status(session: Option<&str>) -> Result<()> {
                 } else {
                     format!(" [{}]", title)
                 };
-                println!("{}{}{}", session.name, status_display, title_display);
+                let cwd_display = tmux::get_pane_cwd(&session.name)
+                    .map(|p| format!(" {}", shorten_path(&p)))
+                    .unwrap_or_default();
+                println!(
+                    "{}{}{}{}",
+                    session.name, status_display, title_display, cwd_display
+                );
             }
         }
     }
