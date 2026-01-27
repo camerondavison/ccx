@@ -56,12 +56,13 @@ After starting the session, tell the user:
 
 1. Attach to the session: `ccx attach <session-name>`
 2. Work on the issue in the tmux session
-3. When done, commit and merge into main
-4. Clean up with:
+3. When done, merge into main and clean up:
    ```bash
    git worktree remove "${WORKTREE}/<project>-issue-<number>-<slug>"
    git branch -d <project>-issue-<number>-<slug>
    ```
+
+Note: The session will automatically mark the issue as done with `itack done` when work is complete, so no need to do this manually.
 
 ## Example
 

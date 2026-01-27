@@ -177,13 +177,24 @@ pub fn attach_session(session_name: &str) -> Result<()> {
 
 /// Send keys to a tmux session
 pub fn send_keys(session_name: &str, text: &str) -> Result<()> {
+    // Send text literally (prevents tmux from interpreting special sequences)
     let status = Command::new("tmux")
-        .args(["send-keys", "-t", session_name, text, "Enter"])
+        .args(["send-keys", "-t", session_name, "-l", text])
         .status()
         .context("Failed to execute tmux")?;
 
     if !status.success() {
         anyhow::bail!("Failed to send keys to session {}", session_name);
+    }
+
+    // Send Enter key separately
+    let status = Command::new("tmux")
+        .args(["send-keys", "-t", session_name, "Enter"])
+        .status()
+        .context("Failed to execute tmux")?;
+
+    if !status.success() {
+        anyhow::bail!("Failed to send Enter to session {}", session_name);
     }
 
     Ok(())
