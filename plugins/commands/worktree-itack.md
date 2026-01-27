@@ -32,12 +32,14 @@ Extract the issue title to create a descriptive branch name.
 
 ### 2. Create the worktree
 
-Create a branch name from the issue: `issue-<number>-<slugified-title>`
+Get the current project name from the basename of the current working directory.
 
-For example, issue 15 with title "Add user authentication" becomes `issue-15-add-user-authentication`.
+Create a branch name from the issue: `<project>-issue-<number>-<slugified-title>`
+
+For example, in project "ccx", issue 15 with title "Add user authentication" becomes `ccx-issue-15-add-user-authentication`.
 
 ```bash
-git worktree add "${WORKTREE}/issue-<number>-<slug>" issue-<number>-<slug>
+git worktree add "${WORKTREE}/<project>-issue-<number>-<slug>" -b <project>-issue-<number>-<slug>
 ```
 
 The `$WORKTREE` environment variable must be set to the directory where worktrees should be created.
@@ -45,7 +47,7 @@ The `$WORKTREE` environment variable must be set to the directory where worktree
 ### 3. Start a ccx session
 
 ```bash
-ccx start --cwd "${WORKTREE}/issue-<number>-<slug>" "work on itack issue <number>"
+ccx start --cwd "${WORKTREE}/<project>-issue-<number>-<slug>" "work on itack issue <number>"
 ```
 
 ### 4. Provide next steps
@@ -57,8 +59,8 @@ After starting the session, tell the user:
 3. When done, commit and merge into main
 4. Clean up with:
    ```bash
-   git worktree remove "${WORKTREE}/issue-<number>-<slug>"
-   git branch -d issue-<number>-<slug>
+   git worktree remove "${WORKTREE}/<project>-issue-<number>-<slug>"
+   git branch -d <project>-issue-<number>-<slug>
    ```
 
 ## Example
@@ -67,8 +69,8 @@ After starting the session, tell the user:
 /worktree-itack 15
 ```
 
-This will:
+In a project named "myapp", this will:
 1. Fetch issue 15 details from itack
-2. Create worktree at `$WORKTREE/issue-15-<title-slug>`
+2. Create worktree at `$WORKTREE/myapp-issue-15-<title-slug>`
 3. Start a ccx session to work on the issue
 4. Print instructions for attaching and cleanup
