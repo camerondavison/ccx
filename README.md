@@ -2,6 +2,12 @@
 
 A CLI tool for running and managing multiple Claude Code sessions in tmux. Start background coding sessions with prompts, monitor their progress, and attach to them when needed.
 
+## Installation
+
+```bash
+cargo install ccx
+```
+
 ## Quick Start
 
 ```bash
