@@ -45,6 +45,13 @@ enum Commands {
         #[arg(value_enum, default_value = "bash")]
         shell: Shell,
     },
+    /// Send a message to an existing session
+    Send {
+        /// The session name to send to
+        session: String,
+        /// The message to send
+        message: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -57,6 +64,7 @@ fn main() -> Result<()> {
         Commands::Stop { session } => cmd_stop(&session),
         Commands::Attach { session } => cmd_attach(&session),
         Commands::Completions { shell } => cmd_completions(shell),
+        Commands::Send { session, message } => cmd_send(&session, &message),
     }
 }
 
@@ -159,5 +167,15 @@ fn cmd_attach(session: &str) -> Result<()> {
 fn cmd_completions(shell: Shell) -> Result<()> {
     let mut cmd = Cli::command();
     generate(shell, &mut cmd, "ccx", &mut std::io::stdout());
+    Ok(())
+}
+
+fn cmd_send(session: &str, message: &str) -> Result<()> {
+    if !tmux::session_exists(session) {
+        anyhow::bail!("Session '{}' does not exist", session);
+    }
+
+    tmux::send_keys(session, message)?;
+    println!("Sent message to session: {}", session);
     Ok(())
 }

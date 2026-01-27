@@ -155,6 +155,20 @@ pub fn attach_session(session_name: &str) -> Result<()> {
     Err(anyhow::anyhow!("Failed to exec tmux: {}", err))
 }
 
+/// Send keys to a tmux session
+pub fn send_keys(session_name: &str, text: &str) -> Result<()> {
+    let status = Command::new("tmux")
+        .args(["send-keys", "-t", session_name, text, "Enter"])
+        .status()
+        .context("Failed to execute tmux")?;
+
+    if !status.success() {
+        anyhow::bail!("Failed to send keys to session {}", session_name);
+    }
+
+    Ok(())
+}
+
 #[derive(Debug)]
 pub struct Session {
     pub name: String,
