@@ -2,6 +2,12 @@
 name = "ccx"
 version = "0.1.0"
 edition = "2024"
+description = "A CLI tool for running and managing multiple Claude Code sessions in tmux"
+license = "MIT"
+repository = "https://github.com/camerondavison/ccx"
+readme = "README.md"
+keywords = ["cli", "tmux", "claude", "ai", "session-manager"]
+categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
 name = "ccx"

@@ -21,6 +21,7 @@ check: check-plugin
 check-plugin: check-plugin-manifest
     claude plugin validate .
     claude plugin validate ./plugins/    
+
 check-plugin-manifest:
     #!/usr/bin/env bash
     set -euxo pipefail
