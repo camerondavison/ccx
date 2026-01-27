@@ -56,6 +56,14 @@ enum Commands {
         /// The message to send
         message: String,
     },
+    /// Watch a session until it completes
+    Watch {
+        /// The session name to watch
+        session: String,
+        /// Check interval in seconds (default: 2)
+        #[arg(long, default_value = "2")]
+        interval: u64,
+    },
 }
 
 fn main() -> Result<()> {
@@ -69,6 +77,7 @@ fn main() -> Result<()> {
         Commands::Attach { session } => cmd_attach(&session),
         Commands::Completions { shell } => cmd_completions(shell),
         Commands::Send { session, message } => cmd_send(&session, &message),
+        Commands::Watch { session, interval } => cmd_watch(&session, interval),
     }
 }
 
@@ -204,5 +213,57 @@ fn cmd_send(session: &str, message: &str) -> Result<()> {
 
     tmux::send_keys(session, message)?;
     println!("Sent message to session: {}", session);
+    Ok(())
+}
+
+fn cmd_watch(session: &str, interval: u64) -> Result<()> {
+    use std::io::{self, Write};
+    use std::thread;
+    use std::time::Duration;
+
+    if !tmux::session_exists(session) {
+        anyhow::bail!("Session '{}' does not exist", session);
+    }
+
+    println!("Watching session: {} (Ctrl+C to stop)", session);
+    println!();
+
+    loop {
+        // Check if session still exists
+        if !tmux::session_exists(session) {
+            println!("\nSession '{}' no longer exists", session);
+            break;
+        }
+
+        // Get current status
+        let title = tmux::get_pane_title(session).unwrap_or_default();
+        let status = tmux::parse_status_from_title(&title);
+
+        // Clear screen and show status
+        print!("\x1B[2J\x1B[1;1H");
+        io::stdout().flush()?;
+
+        println!("Session: {}", session);
+        println!("Status: {}", status);
+        println!();
+
+        // Show recent output
+        if let Ok(content) = tmux::capture_pane(session, 20) {
+            let lines: Vec<&str> = content.lines().filter(|l| !l.trim().is_empty()).collect();
+            let last_n: Vec<&str> = lines.iter().rev().take(15).rev().cloned().collect();
+            for line in last_n {
+                println!("{}", line);
+            }
+        }
+
+        // Check if done
+        if status == tmux::SessionStatus::Done {
+            println!("\nSession completed.");
+            break;
+        }
+
+        thread::sleep(Duration::from_secs(interval));
+    }
+
     Ok(())
 }
