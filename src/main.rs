@@ -27,6 +27,9 @@ enum Commands {
     Status {
         /// Optional session name to show detailed output
         session: Option<String>,
+        /// Number of lines to show (default: 10)
+        #[arg(long, default_value = "10")]
+        lines: i32,
     },
     /// List all sessions
     List,
@@ -60,7 +63,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Start { prompt, cwd } => cmd_start(&prompt, cwd.as_deref()),
-        Commands::Status { session } => cmd_status(session.as_deref()),
+        Commands::Status { session, lines } => cmd_status(session.as_deref(), lines),
         Commands::List => cmd_list(),
         Commands::Stop { session } => cmd_stop(&session),
         Commands::Attach { session } => cmd_attach(&session),
@@ -88,20 +91,26 @@ fn cmd_start(prompt: &str, cwd: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-fn cmd_status(session: Option<&str>) -> Result<()> {
+fn cmd_status(session: Option<&str>, num_lines: i32) -> Result<()> {
     match session {
         Some(name) => {
             // Show detailed output for a specific session
             if !tmux::session_exists(name) {
                 anyhow::bail!("Session '{}' does not exist", name);
             }
-            match tmux::capture_pane(name, 10) {
+            match tmux::capture_pane(name, num_lines) {
                 Ok(content) => {
-                    // Take last 10 non-empty lines
+                    // Take last N non-empty lines
                     let lines: Vec<&str> =
                         content.lines().filter(|l| !l.trim().is_empty()).collect();
-                    let last_10: Vec<&str> = lines.iter().rev().take(10).rev().cloned().collect();
-                    for line in last_10 {
+                    let last_n: Vec<&str> = lines
+                        .iter()
+                        .rev()
+                        .take(num_lines as usize)
+                        .rev()
+                        .cloned()
+                        .collect();
+                    for line in last_n {
                         println!("{}", line);
                     }
                 }
