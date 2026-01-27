@@ -47,7 +47,7 @@ The `$WORKTREE` environment variable must be set to the directory where worktree
 ### 3. Start a ccx session
 
 ```bash
-ccx start --cwd "${WORKTREE}/<project>-issue-<number>-<slug>" "work on itack issue <number>"
+ccx start --cwd "${WORKTREE}/<project>-issue-<number>-<slug>" "Work on itack issue <number>. When you have completed the work, mark the issue as done with 'itack done <number>' and then commit your changes with a descriptive commit message."
 ```
 
 ### 4. Provide next steps
