@@ -96,7 +96,7 @@ fn cmd_start(prompt: &str, cwd: Option<&str>) -> Result<()> {
     let session_name = tmux::generate_session_name();
     tmux::create_session(&session_name, prompt, cwd)?;
     println!("Started session: {}", session_name);
-    println!("Attach with: tmux attach -t {}", session_name);
+    println!("Attach with: ccx attach {}", session_name);
     Ok(())
 }
 
