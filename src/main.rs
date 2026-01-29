@@ -64,6 +64,8 @@ enum Commands {
         #[arg(long, default_value = "2")]
         interval: u64,
     },
+    /// Print the version
+    Version,
 }
 
 fn main() -> Result<()> {
@@ -78,6 +80,7 @@ fn main() -> Result<()> {
         Commands::Completions { shell } => cmd_completions(shell),
         Commands::Send { session, message } => cmd_send(&session, &message),
         Commands::Watch { session, interval } => cmd_watch(&session, interval),
+        Commands::Version => cmd_version(),
     }
 }
 
@@ -265,5 +268,10 @@ fn cmd_watch(session: &str, interval: u64) -> Result<()> {
         thread::sleep(Duration::from_secs(interval));
     }
 
+    Ok(())
+}
+
+fn cmd_version() -> Result<()> {
+    println!("ccx {}", env!("CARGO_PKG_VERSION"));
     Ok(())
 }
