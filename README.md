@@ -1,6 +1,6 @@
 # ccx (Claude Code eXecutor)
 
-A CLI tool for running and managing multiple Claude Code sessions in tmux. Start background coding sessions with prompts, monitor their progress, and attach to them when needed.
+A CLI tool for running and managing multiple background Claude Code sessions. Start background coding sessions with prompts, monitor their progress, and attach to them when needed.
 
 ## Installation
 

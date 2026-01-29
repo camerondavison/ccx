@@ -1,7 +1,7 @@
 ---
 name: ccx
 description: >
-  CLI tool for running and managing multiple Claude Code sessions in tmux.
+  CLI tool for running and managing multiple background Claude Code sessions.
   Use when you need to:
     (1) Start background Claude Code sessions with prompts
     (2) Monitor status and progress of running sessions
@@ -12,7 +12,7 @@ allowed-tools: Bash(ccx *)
 
 # ccx (Claude Code eXecutor)
 
-CLI tool for running and managing multiple Claude Code sessions in tmux.
+CLI tool for running and managing multiple background Claude Code sessions.
 
 ## Commands
 

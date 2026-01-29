@@ -55,7 +55,7 @@ ccx start --cwd "${WORKTREE}/<project>-issue-<number>-<slug>" "Work on itack iss
 After starting the session, tell the user:
 
 1. Attach to the session: `ccx attach <session-name>`
-2. Work on the issue in the tmux session
+2. Work on the issue in the ccx session
 3. When done, merge into main and clean up:
    ```bash
    git worktree remove "${WORKTREE}/<project>-issue-<number>-<slug>"
