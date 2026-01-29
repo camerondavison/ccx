@@ -12,7 +12,7 @@
       "name": "ccx",
       "description": "Plugins for ccx (Claude Code eXecutor)",
       "source": "./plugins",
-      "version": "0.1.0"
+      "version": "0.1.1"
     }
   ]
 }
