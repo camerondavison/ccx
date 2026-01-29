@@ -31,3 +31,6 @@ check-plugin-manifest:
 install:
     cargo install --path .
     claude plugin marketplace update ccx-marketplace
+
+release:
+    cargo release patch --execute
