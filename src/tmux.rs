@@ -1,7 +1,38 @@
 use anyhow::{Context, Result};
+use std::fs;
+use std::io::Write;
 use std::process::Command;
 
 const SESSION_PREFIX: &str = "ccx-";
+
+/// Write a log entry for a session to ~/.ccx/logs/<session_name>.log
+fn session_log(session_name: &str, message: &str) {
+    let Some(home) = std::env::var_os("HOME") else {
+        return;
+    };
+    let log_dir = std::path::Path::new(&home).join(".ccx").join("logs");
+    let _ = fs::create_dir_all(&log_dir);
+    let log_path = log_dir.join(format!("{}.log", session_name));
+    let timestamp = chrono_free_timestamp();
+    if let Ok(mut f) = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_path)
+    {
+        let _ = writeln!(f, "[{}] {}", timestamp, message);
+    }
+}
+
+/// Simple timestamp without pulling in chrono
+fn chrono_free_timestamp() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    // Return unix timestamp — readable enough for logs
+    format!("{}", secs)
+}
 
 /// Generate a unique session name with the ccx- prefix
 pub fn generate_session_name() -> String {
@@ -43,12 +74,22 @@ pub fn create_session(session_name: &str, prompt: &str, cwd: Option<&str>) -> Re
 
     args.push(&claude_cmd);
 
+    session_log(
+        session_name,
+        &format!(
+            "Created session (cwd: {}, prompt: {})",
+            cwd.unwrap_or("."),
+            prompt
+        ),
+    );
+
     let status = Command::new("tmux")
         .args(&args)
         .status()
         .context("Failed to execute tmux")?;
 
     if !status.success() {
+        session_log(session_name, "Failed to create tmux session");
         anyhow::bail!("Failed to create tmux session");
     }
 
@@ -57,7 +98,61 @@ pub fn create_session(session_name: &str, prompt: &str, cwd: Option<&str>) -> Re
         .args(["set-option", "-t", session_name, "allow-rename", "on"])
         .status();
 
+    // Auto-accept the trusted folder prompt if Claude Code shows one
+    auto_trust_if_needed(session_name);
+
     Ok(())
+}
+
+/// Poll a newly created session and auto-accept the trusted folder prompt if present.
+/// Claude Code may ask to trust the working directory before starting work.
+/// Marks the session as failed if it dies before starting.
+fn auto_trust_if_needed(session_name: &str) {
+    use std::thread;
+    use std::time::Duration;
+
+    for _ in 0..10 {
+        thread::sleep(Duration::from_millis(300));
+
+        if !session_exists(session_name) {
+            session_log(session_name, "Session exited before starting");
+            eprintln!("Warning: session exited before starting");
+            return;
+        }
+
+        // If claude is already working, no trust prompt to handle
+        if let Ok(title) = get_pane_title(session_name) {
+            let status = parse_status_from_title(&title);
+            if matches!(status, SessionStatus::InProgress | SessionStatus::Done) {
+                return;
+            }
+        }
+
+        // Check pane content for the trust prompt
+        if let Ok(content) = capture_pane(session_name, 20) {
+            let lower = content.to_lowercase();
+            if lower.contains("trust") {
+                session_log(session_name, "Detected trust prompt, auto-accepting");
+                let _ = Command::new("tmux")
+                    .args(["send-keys", "-t", session_name, "Enter"])
+                    .status();
+                return;
+            }
+        }
+    }
+
+    // Exhausted all polls without seeing claude start — mark as failed
+    if session_exists(session_name) {
+        session_log(session_name, "Timed out waiting for claude to start");
+        if let Ok(content) = capture_pane(session_name, 20) {
+            session_log(
+                session_name,
+                &format!("Pane content at timeout:\n{}", content),
+            );
+        }
+        set_pane_title(session_name, "❌ Failed to start");
+        eprintln!("Warning: session did not start within expected time");
+    }
 }
 
 /// List all ccx sessions
@@ -220,6 +315,8 @@ pub enum SessionStatus {
     InProgress,
     /// Session has completed (✳ character)
     Done,
+    /// Session failed to start (❌ character, set by ccx)
+    Failed,
     /// Status could not be determined
     Unknown,
 }
@@ -229,6 +326,7 @@ impl std::fmt::Display for SessionStatus {
         match self {
             SessionStatus::InProgress => write!(f, "in-progress"),
             SessionStatus::Done => write!(f, "done"),
+            SessionStatus::Failed => write!(f, "failed"),
             SessionStatus::Unknown => write!(f, "unknown"),
         }
     }
@@ -245,6 +343,8 @@ fn is_braille_spinner(c: char) -> bool {
 
 /// Done indicator character
 const DONE_CHAR: char = '✳';
+/// Failed indicator character (set by ccx when session fails to start)
+const FAILED_CHAR: char = '❌';
 
 /// Parse the session status from a pane title
 pub fn parse_status_from_title(title: &str) -> SessionStatus {
@@ -258,12 +358,22 @@ pub fn parse_status_from_title(title: &str) -> SessionStatus {
         if first_char == DONE_CHAR {
             return SessionStatus::Done;
         }
+        if first_char == FAILED_CHAR {
+            return SessionStatus::Failed;
+        }
         if is_braille_spinner(first_char) {
             return SessionStatus::InProgress;
         }
     }
 
     SessionStatus::Unknown
+}
+
+/// Set the pane title for a session
+fn set_pane_title(session_name: &str, title: &str) {
+    let _ = Command::new("tmux")
+        .args(["select-pane", "-t", session_name, "-T", title])
+        .status();
 }
 
 #[cfg(test)]
@@ -320,6 +430,19 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_status_failed() {
+        assert_eq!(
+            parse_status_from_title("❌ Failed to start"),
+            SessionStatus::Failed
+        );
+        assert_eq!(parse_status_from_title("❌"), SessionStatus::Failed);
+        assert_eq!(
+            parse_status_from_title("  ❌ with spaces"),
+            SessionStatus::Failed
+        );
+    }
+
+    #[test]
     fn test_parse_status_unknown() {
         assert_eq!(parse_status_from_title(""), SessionStatus::Unknown);
         assert_eq!(parse_status_from_title("   "), SessionStatus::Unknown);
@@ -333,6 +456,7 @@ mod tests {
     fn test_session_status_display() {
         assert_eq!(format!("{}", SessionStatus::InProgress), "in-progress");
         assert_eq!(format!("{}", SessionStatus::Done), "done");
+        assert_eq!(format!("{}", SessionStatus::Failed), "failed");
         assert_eq!(format!("{}", SessionStatus::Unknown), "unknown");
     }
 }
