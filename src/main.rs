@@ -1,6 +1,6 @@
 mod tmux;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{Shell, generate};
 use std::env;
@@ -64,8 +64,30 @@ enum Commands {
         #[arg(long, default_value = "2")]
         interval: u64,
     },
+    /// View or clean up session logs
+    Logs {
+        #[command(subcommand)]
+        action: LogsAction,
+    },
     /// Print the version
     Version,
+}
+
+#[derive(Subcommand)]
+enum LogsAction {
+    /// Show log for a session
+    Show {
+        /// The session name
+        session: String,
+    },
+    /// List all log files
+    List,
+    /// Remove logs older than N days (default: 7)
+    Clean {
+        /// Max age in days
+        #[arg(long, default_value = "7")]
+        days: u64,
+    },
 }
 
 fn main() -> Result<()> {
@@ -80,6 +102,7 @@ fn main() -> Result<()> {
         Commands::Completions { shell } => cmd_completions(shell),
         Commands::Send { session, message } => cmd_send(&session, &message),
         Commands::Watch { session, interval } => cmd_watch(&session, interval),
+        Commands::Logs { action } => cmd_logs(action),
         Commands::Version => cmd_version(),
     }
 }
@@ -266,6 +289,68 @@ fn cmd_watch(session: &str, interval: u64) -> Result<()> {
         }
 
         thread::sleep(Duration::from_secs(interval));
+    }
+
+    Ok(())
+}
+
+fn logs_dir() -> Result<std::path::PathBuf> {
+    let home = env::var("HOME").context("HOME not set")?;
+    Ok(std::path::Path::new(&home).join(".ccx").join("logs"))
+}
+
+fn cmd_logs(action: LogsAction) -> Result<()> {
+    let dir = logs_dir()?;
+
+    match action {
+        LogsAction::Show { session } => {
+            let path = dir.join(format!("{}.log", session));
+            if !path.exists() {
+                anyhow::bail!("No log found for session '{}'", session);
+            }
+            let content = std::fs::read_to_string(&path)?;
+            print!("{}", content);
+        }
+        LogsAction::List => {
+            if !dir.exists() {
+                println!("No logs found");
+                return Ok(());
+            }
+            let mut entries: Vec<_> = std::fs::read_dir(&dir)?
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().extension().is_some_and(|ext| ext == "log"))
+                .collect();
+            if entries.is_empty() {
+                println!("No logs found");
+                return Ok(());
+            }
+            entries.sort_by_key(|e| e.file_name());
+            for entry in entries {
+                let name = entry.file_name();
+                let name = name.to_string_lossy().replace(".log", "");
+                let meta = entry.metadata().ok();
+                let size = meta.as_ref().map(|m| m.len()).unwrap_or(0);
+                println!("{} ({}B)", name, size);
+            }
+        }
+        LogsAction::Clean { days } => {
+            if !dir.exists() {
+                println!("No logs to clean");
+                return Ok(());
+            }
+            let cutoff =
+                std::time::SystemTime::now() - std::time::Duration::from_secs(days * 86400);
+            let mut removed = 0;
+            for entry in std::fs::read_dir(&dir)?.filter_map(|e| e.ok()) {
+                if let Ok(meta) = entry.metadata() {
+                    let modified = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+                    if modified < cutoff && std::fs::remove_file(entry.path()).is_ok() {
+                        removed += 1;
+                    }
+                }
+            }
+            println!("Removed {} log(s) older than {} day(s)", removed, days);
+        }
     }
 
     Ok(())

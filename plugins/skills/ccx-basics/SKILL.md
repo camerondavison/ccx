@@ -6,7 +6,8 @@ description: >
     (1) Start background Claude Code sessions with prompts
     (2) Monitor status and progress of running sessions
     (3) List all active sessions
-    (4) Stop or attach to existing sessions.
+    (4) Stop or attach to existing sessions
+    (5) View session logs for debugging failed or past sessions.
 allowed-tools: Bash(ccx *)
 ---
 
@@ -55,6 +56,24 @@ ccx stop <session-name>
 ```bash
 # Attach to an existing session interactively
 ccx attach <session-name>
+```
+
+### Session Logs
+
+Session events are logged to `~/.ccx/logs/<session-name>.log` for debugging.
+
+```bash
+# List all log files
+ccx logs list
+
+# Show log for a specific session
+ccx logs show <session-name>
+
+# Clean up logs older than 7 days (default)
+ccx logs clean
+
+# Clean up logs older than N days
+ccx logs clean --days 30
 ```
 
 ## Workflow
