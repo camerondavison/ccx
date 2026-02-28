@@ -20,11 +20,18 @@ fn rand_id() -> u32 {
     time.wrapping_add(pid)
 }
 
-/// Create a new detached tmux session running claude with the given prompt
+/// Create a new detached tmux session running claude with the given prompt.
+/// Uses `env -i` to start claude with a clean environment, preventing inherited
+/// variables (like CLAUDECODE) from causing nested-session detection failures.
 pub fn create_session(session_name: &str, prompt: &str, cwd: Option<&str>) -> Result<()> {
+    let escaped_prompt = prompt.replace('"', "\\\"");
+
+    // Start claude in a clean login shell to prevent inherited env vars
+    // (like CLAUDECODE) from causing nested-session detection failures.
+    // `env -i` clears the environment, then `bash -l` sources the user's
+    // profile files to set up PATH, tools, etc. from scratch.
     let claude_cmd = format!(
-        "claude --dangerously-skip-permissions \"{}\"",
-        prompt.replace('"', "\\\"")
+        "exec env -i HOME=\"$HOME\" bash -lc 'exec claude --dangerously-skip-permissions \"{escaped_prompt}\"'",
     );
 
     let mut args = vec!["new-session", "-d", "-s", session_name];
