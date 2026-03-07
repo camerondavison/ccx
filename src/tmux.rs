@@ -57,12 +57,9 @@ fn rand_id() -> u32 {
 pub fn create_session(session_name: &str, prompt: &str, cwd: Option<&str>) -> Result<()> {
     let escaped_prompt = prompt.replace('"', "\\\"");
 
-    // Start claude in a clean login shell to prevent inherited env vars
-    // (like CLAUDECODE) from causing nested-session detection failures.
-    // `env -i` clears the environment, then `bash -l` sources the user's
-    // profile files to set up PATH, tools, etc. from scratch.
+    // Unset the env var that triggers Claude Code's nested-session detection.
     let claude_cmd = format!(
-        "exec env -i HOME=\"$HOME\" bash -lc 'exec claude --dangerously-skip-permissions \"{escaped_prompt}\"'",
+        "exec env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT claude --dangerously-skip-permissions \"{escaped_prompt}\"",
     );
 
     let mut args = vec!["new-session", "-d", "-s", session_name];
